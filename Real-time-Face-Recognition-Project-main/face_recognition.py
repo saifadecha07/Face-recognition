@@ -61,7 +61,7 @@ def knn(train, test, k=5):
     return output[0][index], min_dist
 ################################
 
-# โหลด Cascade และ Dataset (โค้ดเดิมของคุณ)
+# โหลด Cascade และ Dataset
 cap = cv2.VideoCapture(0)
 face_cascade = cv2.CascadeClassifier("haarcascade_frontalface_alt.xml")
 dataset_path = "./face_dataset/"
