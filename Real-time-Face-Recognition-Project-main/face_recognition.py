@@ -6,6 +6,8 @@ import requests
 import csv
 from datetime import datetime
 
+
+
 # ==========================================
 # 1. ตั้งค่า Telegram และโฟลเดอร์เก็บรูป
 # ==========================================
@@ -33,9 +35,8 @@ def log_to_csv(name):
         date_str = now.strftime("%Y-%m-%d")
         time_str = now.strftime("%H:%M:%S")
         writer.writerow([name, date_str, time_str])
-        print(f"📝 บันทึกประวัติ: {name} เข้าแล็บเวลา {time_str}")
+        print(f" recording: {name} entering at {time_str}")
 
-########## KNN CODE (ปรับปรุงใหม่) ############
 def distance(v1, v2):
     return np.sqrt(((v1-v2)**2).sum())
 
@@ -128,9 +129,9 @@ while True:
                 filename = f"unknown_faces/stranger_{int(current_time)}.jpg"
                 cv2.imwrite(filename, frame) # แคปทั้งเฟรม (หรือถ้าอยากได้แค่หน้าเปลี่ยน frame เป็น face_section)
                 
-                alert_msg = f"🚨 แจ้งเตือน: พบคนแปลกหน้าเข้าห้องแล็บ!\nเวลา: {datetime.now().strftime('%H:%M:%S')}"
+                alert_msg = f"meeting a stranger \non: {datetime.now().strftime('%H:%M:%S')}"
                 send_telegram_photo(filename, alert_msg)
-                print("📲 ส่งแจ้งเตือน Telegram สำเร็จ!")
+                print(" Notification success")
 
         # --- ส่วนแสดงผลบนหน้าจอ ---
         # สีของกรอบ: สีแดง (Unknown), สีเขียว (รู้จัก)
