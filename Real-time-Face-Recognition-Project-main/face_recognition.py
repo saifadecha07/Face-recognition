@@ -11,8 +11,8 @@ from datetime import datetime
 # ==========================================
 # 1. ตั้งค่า Telegram และโฟลเดอร์เก็บรูป
 # ==========================================
-TOKEN = '8220444201:AAHig8BTsCcurclOyVDGOIXgYzct8ITp50I'
-CHAT_ID = '8696330483'
+TOKEN = 'xxxxxxxxxxxxx'
+CHAT_ID = 'xxxxxxxxxxxx'
 THRESHOLD = 9000  # lab 608 เทสเเล้วเเม่นที่9000
 if not os.path.exists("unknown_faces"):
     os.makedirs("unknown_faces")
