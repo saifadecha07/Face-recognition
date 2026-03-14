@@ -103,10 +103,20 @@ while True:
     for face in faces:
         x, y, w, h = face
         offset = 5
-        face_section = frame[y-offset:y+h+offset, x-offset:x+w+offset]
+        y1, y2 = max(0, y - offset), min(frame.shape[0], y + h + offset)
+        x1, x2 = max(0, x - offset), min(frame.shape[1], x + w + offset)
+        
+        # 2. ตัดภาพตามพิกัด
+        face_section = frame[y1:y2, x1:x2]
+        
+        # 3. เช็คความชัวร์ภาพไม่ว่างเปล่า
+        if face_section.shape[0] == 0 or face_section.shape[1] == 0:
+            continue
+            
+        # 4. ย่อขนาดภาพ
         face_section = cv2.resize(face_section, (100, 100))
 
-        # ส่งไปเข้าโมเดล KNN เพื่อทายผลและดูระยะห่าง
+        # ส่งไปเข้าโมเดล KNN 
         out, min_dist = knn(trainset, face_section.flatten())
         
         # เช็คว่าเป็นคนแปลกหน้าไหม
