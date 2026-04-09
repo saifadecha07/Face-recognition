@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Surveillance Dashboard</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+    <main class="page-shell">
+        <section class="hero">
+            <div>
+                <p class="eyebrow">Face Surveillance</p>
+                <h1>Live Camera Intelligence Dashboard</h1>
+                <p class="hero-copy">
+                    ดูได้ทันทีว่าใครอยู่หน้ากล้องตอนนี้ ใครเพิ่งออกไป และฐานข้อมูลลงทะเบียนมีใครบ้าง
+                </p>
+            </div>
+            <div class="hero-actions">
+                <button id="start-camera" class="action-button">Start Camera</button>
+                <button id="stop-camera" class="action-button secondary">Stop Camera</button>
+            </div>
+        </section>
+
+        <section class="metrics-grid">
+            <article class="metric-card">
+                <span class="metric-label">Camera State</span>
+                <strong id="camera-state" class="metric-value">Checking</strong>
+            </article>
+            <article class="metric-card">
+                <span class="metric-label">Active Tracks</span>
+                <strong id="active-count" class="metric-value">0</strong>
+            </article>
+            <article class="metric-card">
+                <span class="metric-label">Registered Persons</span>
+                <strong id="persons-count" class="metric-value">0</strong>
+            </article>
+            <article class="metric-card">
+                <span class="metric-label">Recent Events</span>
+                <strong id="recent-count" class="metric-value">0</strong>
+            </article>
+        </section>
+
+        <section class="panel-grid">
+            <article class="panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="panel-kicker">Live</p>
+                        <h2>People In Camera</h2>
+                    </div>
+                    <span class="pill live">Auto refresh</span>
+                </div>
+                <div id="active-sightings" class="card-list empty-state">
+                    No active detections yet
+                </div>
+            </article>
+
+            <article class="panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="panel-kicker">Registry</p>
+                        <h2>Known Persons</h2>
+                    </div>
+                    <span class="pill neutral">Dataset sync</span>
+                </div>
+                <div id="persons-list" class="card-list empty-state">
+                    No registered persons found
+                </div>
+            </article>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">Timeline</p>
+                    <h2>Recent Sightings</h2>
+                </div>
+                <span class="pill warm">Last 20 sessions</span>
+            </div>
+            <div id="recent-sightings" class="table-shell empty-state">
+                No sighting history found
+            </div>
+        </section>
+    </main>
+
+    <script src="/static/dashboard.js"></script>
+</body>
+</html>

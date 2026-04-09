@@ -1,0 +1,1 @@
+"""Camera surveillance application package."""
