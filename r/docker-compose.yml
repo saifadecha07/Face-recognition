@@ -15,11 +15,11 @@ services:
     depends_on:
       - db
     env_file:
-      - .env.example
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/face_surveillance
     ports:
       - "8000:8000"
-    volumes:
-      - ./face_dataset:/app/face_dataset
 
 volumes:
   postgres_data:

@@ -2,15 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
+import os
 
 import cv2
 import numpy as np
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.database import SessionLocal
-from app.models import Person, Sighting
+from app.models import FaceSample, Person, Sighting
 from app.tracking import CentroidTracker, TrackState
 
 
@@ -18,6 +19,7 @@ from app.tracking import CentroidTracker, TrackState
 class RecognitionResult:
     label: str
     confidence: float
+    distance: float
 
 
 class FaceRecognizerService:
@@ -29,55 +31,62 @@ class FaceRecognizerService:
         )
         self.recognizer = cv2.face.LBPHFaceRecognizer_create()
         self.person_map: dict[int, Person] = {}
+        self.training_sample_count = 0
         self._active_sighting_ids: dict[int, int] = {}
         self._train_recognizer()
 
     def _train_recognizer(self) -> None:
-        dataset_dir = Path(settings.face_data_dir)
-        dataset_dir.mkdir(parents=True, exist_ok=True)
-
         face_samples: list[np.ndarray] = []
         labels: list[int] = []
 
         with SessionLocal() as session:
-            persons = session.scalars(select(Person)).all()
-            existing = {person.dataset_file: person for person in persons}
-
+            stmt = select(Person).options(selectinload(Person.face_samples)).order_by(Person.name)
+            persons = session.scalars(stmt).all()
             label_id = 0
-            for dataset_file in sorted(dataset_dir.glob("*.npy")):
-                if dataset_file.name not in existing:
-                    person = Person(name=dataset_file.stem, dataset_file=dataset_file.name)
-                    session.add(person)
-                    session.flush()
-                    existing[dataset_file.name] = person
-
-                person = existing[dataset_file.name]
+            for person in persons:
+                if not person.face_samples:
+                    continue
                 self.person_map[label_id] = person
-
-                data = np.load(dataset_file)
-                reshaped = data.reshape((-1, 100, 100, 3))
-                grayscale_faces = [cv2.cvtColor(face.astype(np.uint8), cv2.COLOR_BGR2GRAY) for face in reshaped]
+                grayscale_faces = []
+                for sample in person.face_samples:
+                    face = self._decode_face_sample(sample)
+                    grayscale_faces.append(cv2.cvtColor(face, cv2.COLOR_BGR2GRAY))
                 face_samples.extend(grayscale_faces)
                 labels.extend([label_id] * len(grayscale_faces))
                 label_id += 1
 
-            session.commit()
-
         if face_samples:
             self.recognizer.train(face_samples, np.array(labels))
+        self.training_sample_count = len(face_samples)
+        print(
+            "[recognition] loaded",
+            len(self.person_map),
+            "persons with",
+            self.training_sample_count,
+            "samples",
+            f"(threshold={settings.recognition_threshold})",
+        )
+
+    @staticmethod
+    def _decode_face_sample(sample: FaceSample) -> np.ndarray:
+        return np.frombuffer(sample.image_data, dtype=np.uint8).reshape((100, 100, 3))
 
     def _predict_face(self, face_image: np.ndarray) -> RecognitionResult:
         if not self.person_map:
-            return RecognitionResult(label="Unknown", confidence=0.0)
+            return RecognitionResult(label="Unknown", confidence=0.0, distance=float("inf"))
 
         grayscale = cv2.cvtColor(face_image, cv2.COLOR_BGR2GRAY)
         label_id, distance = self.recognizer.predict(grayscale)
         confidence = max(0.0, 100.0 - float(distance))
         if confidence < settings.recognition_threshold:
-            return RecognitionResult(label="Unknown", confidence=confidence)
+            return RecognitionResult(label="Unknown", confidence=confidence, distance=float(distance))
 
         person = self.person_map.get(label_id)
-        return RecognitionResult(label=person.name if person else "Unknown", confidence=confidence)
+        return RecognitionResult(
+            label=person.name if person else "Unknown",
+            confidence=confidence,
+            distance=float(distance),
+        )
 
     def detect_and_track(self, frame: np.ndarray) -> tuple[np.ndarray, list[dict], list[dict]]:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -101,6 +110,7 @@ class FaceRecognizerService:
                     "bbox": (x, y, w, h),
                     "label": result.label,
                     "confidence": result.confidence,
+                    "distance": result.distance,
                 }
             )
 
@@ -117,7 +127,10 @@ class FaceRecognizerService:
         x, y, w, h = track.bbox
         color = (0, 255, 0) if track.label != "Unknown" else (0, 0, 255)
         movement_state = "moving" if self.tracker.is_moving(track) else "stable"
-        title = f"{track.label} #{track.track_id} {movement_state}"
+        title = (
+            f"{track.label} #{track.track_id} {movement_state} "
+            f"conf={track.confidence:.1f} dist={track.metadata.get('distance', float('nan')):.1f}"
+        )
         cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
         cv2.putText(frame, title, (x, max(25, y - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
@@ -222,3 +235,20 @@ def parse_camera_source(source: str) -> int | str:
     if source.isdigit():
         return int(source)
     return source
+
+
+def open_camera_capture(source: str) -> cv2.VideoCapture:
+    parsed_source = parse_camera_source(source)
+    if isinstance(parsed_source, int) and os.name == "nt":
+        backend_candidates = [
+            ("DSHOW", cv2.CAP_DSHOW),
+            ("MSMF", cv2.CAP_MSMF),
+        ]
+        for backend_name, backend_id in backend_candidates:
+            capture = cv2.VideoCapture(parsed_source, backend_id)
+            if capture.isOpened():
+                print(f"[camera] opened source {parsed_source} with {backend_name}")
+                return capture
+            capture.release()
+        print(f"[camera] failed to open source {parsed_source} with DSHOW/MSMF, falling back to default backend")
+    return cv2.VideoCapture(parsed_source)

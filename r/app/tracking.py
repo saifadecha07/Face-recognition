@@ -14,6 +14,7 @@ class TrackState:
     bbox: tuple[int, int, int, int]
     label: str
     confidence: float
+    metadata: dict = field(default_factory=dict)
     first_seen_ts: float = field(default_factory=time)
     last_seen_ts: float = field(default_factory=time)
     missing_frames: int = 0
@@ -55,6 +56,7 @@ class CentroidTracker:
                     bbox=detection["bbox"],
                     label=detection["label"],
                     confidence=detection["confidence"],
+                    metadata={k: v for k, v in detection.items() if k not in {"bbox", "label", "confidence"}},
                 )
                 matched_ids.add(track_id)
                 continue
@@ -64,6 +66,7 @@ class CentroidTracker:
             track.bbox = detection["bbox"]
             track.label = detection["label"]
             track.confidence = detection["confidence"]
+            track.metadata = {k: v for k, v in detection.items() if k not in {"bbox", "label", "confidence"}}
             track.last_seen_ts = time()
             track.missing_frames = 0
             matched_ids.add(best_track_id)

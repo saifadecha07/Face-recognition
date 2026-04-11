@@ -55,7 +55,7 @@ function renderPersons(items) {
                 <div class="card-name">${item.name}</div>
                 <span class="status-chip active">known</span>
             </div>
-            <p class="card-meta">${item.dataset_file}</p>
+            <p class="card-meta">${item.sample_count} samples stored in PostgreSQL</p>
             <p class="subtle">Created ${formatDate(item.created_at)}</p>
         </article>
     `).join("");
