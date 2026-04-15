@@ -17,6 +17,16 @@ class Settings(BaseSettings):
     frame_width: int = 640
     frame_height: int = 480
     recognition_threshold: float = 85.0
+    recognition_distance_threshold: float = 70.0
+    unknown_match_threshold: float = 0.35
+    face_detection_scale_factor: float = 1.2
+    face_detection_min_neighbors: int = 6
+    face_detection_min_size: int = 72
+    recognition_consensus_frames: int = 3
+    recognition_history_size: int = 6
+    redis_url: str | None = None
+    redis_presence_key: str = "face_surveillance:presence:current"
+    redis_presence_ttl_seconds: int = 30
     lost_frames_threshold: int = 20
     motion_distance_threshold: float = 18.0
     cascade_path: Path = DEFAULT_CASCADE_PATH

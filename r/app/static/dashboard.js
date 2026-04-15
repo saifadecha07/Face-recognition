@@ -31,7 +31,7 @@ function renderActiveSightings(items) {
         <article class="card-item">
             <div class="card-topline">
                 <div class="card-name">${item.label}</div>
-                <span class="status-chip ${item.label === "Unknown" ? "unknown" : "active"}">${item.status}</span>
+                <span class="status-chip ${item.label.toLowerCase().startsWith("unknown") ? "unknown" : "active"}">${item.status}</span>
             </div>
             <p class="card-meta">Track #${item.track_id} | Camera: ${item.camera_name}</p>
             <p class="subtle">Confidence ${item.confidence.toFixed(2)} | Movement ${item.movement_score.toFixed(2)}</p>

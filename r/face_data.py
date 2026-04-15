@@ -5,7 +5,7 @@ from sqlalchemy import select
 from app.config import settings
 from app.database import Base, SessionLocal, engine, ensure_schema
 from app.models import FaceSample, Person
-from app.recognition import open_camera_capture
+from app.recognition import FaceRecognizerService, open_camera_capture
 
 
 def ensure_gui_available() -> None:
@@ -35,8 +35,7 @@ def main() -> None:
     skip = 0
     face_data: list[np.ndarray] = []
     file_name = input("Enter person name: ").strip()
-    role = input("Enter role [lab_head/user/guest] (default user): ").strip().lower() or "user"
-    gesture_enabled = input("Enable gesture control for this person? [y/N]: ").strip().lower() == "y"
+    username = input("Enter student id (username): ").strip() or None
     print("Camera started. Look at the camera and press 'q' when you have enough samples.")
 
     while True:
@@ -65,11 +64,18 @@ def main() -> None:
             face_offset = frame[y1:y2, x1:x2]
             face_selection = cv2.resize(face_offset, (100, 100))
 
-            if skip % 5 == 0:
-                face_data.append(face_selection)
-                print(f"captured: {len(face_data)}")
+            # Reject blurry samples so training quality stays usable.
+            blur_score = cv2.Laplacian(
+                cv2.cvtColor(face_selection, cv2.COLOR_BGR2GRAY),
+                cv2.CV_64F,
+            ).var()
 
-            cv2.imshow("face-preview", face_selection)
+            if skip % 5 == 0 and blur_score >= 60.0:
+                face_data.append(face_selection)
+                print(f"captured: {len(face_data)} blur={blur_score:.1f}")
+
+            preview = FaceRecognizerService._prepare_face_for_recognition(face_selection)
+            cv2.imshow("face-preview", preview)
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
         cv2.imshow("dataset-capture", frame)
@@ -88,15 +94,13 @@ def main() -> None:
         if person is None:
             person = Person(
                 name=file_name,
+                username=username,
                 dataset_file=f"db:{file_name}",
-                role=role,
-                gesture_control_enabled=gesture_enabled,
             )
             session.add(person)
             session.flush()
         else:
-            person.role = role
-            person.gesture_control_enabled = gesture_enabled
+            person.username = username
             session.query(FaceSample).filter(FaceSample.person_id == person.id).delete()
 
         session.add_all(
