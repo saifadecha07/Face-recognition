@@ -52,6 +52,7 @@ class FaceRecognizerService:
         self.training_sample_count = 0
         self._active_sighting_ids: dict[int, int] = {}
         self._track_histories: dict[int, deque[dict]] = {}
+        self._last_frame: np.ndarray | None = None
         self._train_recognizer()
         self._load_unknown_identities()
 
@@ -422,6 +423,7 @@ class FaceRecognizerService:
         )
 
     def detect_and_track(self, frame: np.ndarray) -> tuple[np.ndarray, list[dict], list[dict]]:
+        self._last_frame = frame.copy()
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = self.face_cascade.detectMultiScale(
             gray,
@@ -656,6 +658,40 @@ class FaceRecognizerService:
         track.label = unknown.label
         track.metadata["unknown_identity_id"] = unknown.id
         return unknown
+
+
+    def retrain(self) -> tuple[int, int]:
+        self.person_map.clear()
+        self.unknown_map.clear()
+        self.unknown_fingerprints.clear()
+        self._next_unknown_sequence = 1
+        self.recognizer = cv2.face.LBPHFaceRecognizer_create()
+        self._train_recognizer()
+        self._load_unknown_identities()
+        return len(self.person_map), self.training_sample_count
+
+    def capture_frame(self) -> np.ndarray | None:
+        return self._last_frame.copy() if self._last_frame is not None else None
+
+    def detect_faces_in_image(self, image: np.ndarray) -> list[np.ndarray]:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        faces = self.face_cascade.detectMultiScale(
+            gray,
+            scaleFactor=settings.face_detection_scale_factor,
+            minNeighbors=settings.face_detection_min_neighbors,
+            minSize=(settings.face_detection_min_size, settings.face_detection_min_size),
+        )
+        crops: list[np.ndarray] = []
+        for (x, y, w, h) in faces:
+            offset = 8
+            y1 = max(0, y - offset)
+            y2 = min(image.shape[0], y + h + offset)
+            x1 = max(0, x - offset)
+            x2 = min(image.shape[1], x + w + offset)
+            face_region = image[y1:y2, x1:x2]
+            if face_region.size > 0:
+                crops.append(cv2.resize(face_region, (100, 100)))
+        return crops
 
 
 def parse_camera_source(source: str) -> int | str:
