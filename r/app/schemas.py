@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class PersonRead(BaseModel):
@@ -110,3 +110,62 @@ class LabPresenceSnapshot(BaseModel):
     lab_head_present: bool
     usernames_in_lab: list[str]
     identities: list[LabPresenceIdentityRead]
+
+
+# --- Fine-tuning schemas ---
+
+class PersonCreate(BaseModel):
+    name: str
+    role: str = "user"
+
+    @field_validator("name")
+    @classmethod
+    def name_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("name cannot be empty")
+        return v
+
+    @field_validator("role")
+    @classmethod
+    def role_valid(cls, v: str) -> str:
+        allowed = {"lab_head", "admin", "supervisor", "staff", "user", "guest"}
+        if v not in allowed:
+            raise ValueError(f"role must be one of {allowed}")
+        return v
+
+
+class FaceSampleRead(BaseModel):
+    id: int
+    person_id: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class TrainResult(BaseModel):
+    persons_trained: int
+    samples_used: int
+    message: str
+
+
+class PromoteUnknownRequest(BaseModel):
+    person_name: str
+
+    @field_validator("person_name")
+    @classmethod
+    def name_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("person_name cannot be empty")
+        return v
+
+
+class UnknownIdentityRead(BaseModel):
+    id: int
+    label: str
+    sample_count: int
+    created_at: datetime
+    last_seen_at: datetime
+
+    model_config = {"from_attributes": True}
